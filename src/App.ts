@@ -4,6 +4,7 @@ const mapPackPath = `${import.meta.env.BASE_URL}map-packs/current/map-pack.json`
 const settingsKey = "mobile-mapper.settings";
 
 type Settings = {
+  settingsVersion: number;
   overlayOpacity: number;
   gridEnabled: boolean;
   gridOpacity: number;
@@ -22,9 +23,12 @@ type DeviceOrientationEventConstructorWithPermission = typeof DeviceOrientationE
   requestPermission?: (absolute?: boolean) => Promise<DeviceOrientationPermissionState>;
 };
 
+const currentSettingsVersion = 2;
+
 const defaultSettings: Settings = {
+  settingsVersion: currentSettingsVersion,
   overlayOpacity: 1,
-  gridEnabled: false,
+  gridEnabled: true,
   gridOpacity: 0.35,
   redFilterEnabled: false,
   redFilterStrength: 0.8
@@ -234,7 +238,8 @@ function startCompass(
 
   if (typeof OrientationEvent.requestPermission === "function") {
     compassEnable.hidden = false;
-    compassEnable.addEventListener("click", async () => {
+
+    const requestCompassPermission = async (automatic: boolean) => {
       compassEnable.disabled = true;
       compassStatus.value = "Requesting compass";
 
@@ -248,16 +253,21 @@ function startCompass(
         }
 
         mapState.setCompassHeading(null);
-        compassStatus.value = "Compass denied";
+        compassStatus.value = permission === "prompt" ? "Tap to enable compass" : "Compass denied";
       } catch {
         mapState.setCompassHeading(null);
-        compassStatus.value = "Compass unavailable";
+        compassStatus.value = automatic ? "Tap to enable compass" : "Compass unavailable";
       } finally {
         if (!compassEnable.hidden) {
           compassEnable.disabled = false;
         }
       }
+    };
+
+    compassEnable.addEventListener("click", () => {
+      void requestCompassPermission(false);
     });
+    void requestCompassPermission(true);
     return;
   }
 
@@ -287,9 +297,11 @@ function loadSettings(): Settings {
 
   try {
     const parsed = JSON.parse(raw) as Partial<Settings>;
+    const isCurrentSettings = parsed.settingsVersion === currentSettingsVersion;
     return {
+      settingsVersion: currentSettingsVersion,
       overlayOpacity: clamp(parsed.overlayOpacity ?? defaultSettings.overlayOpacity, 0, 1),
-      gridEnabled: parsed.gridEnabled ?? defaultSettings.gridEnabled,
+      gridEnabled: isCurrentSettings ? (parsed.gridEnabled ?? defaultSettings.gridEnabled) : true,
       gridOpacity: clamp(parsed.gridOpacity ?? defaultSettings.gridOpacity, 0, 1),
       redFilterEnabled: parsed.redFilterEnabled ?? defaultSettings.redFilterEnabled,
       redFilterStrength: clamp(parsed.redFilterStrength ?? defaultSettings.redFilterStrength, 0, 1)
