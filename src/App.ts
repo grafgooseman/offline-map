@@ -5,6 +5,7 @@ const settingsKey = "mobile-mapper.settings";
 
 type Settings = {
   settingsVersion: number;
+  satelliteImageEnabled: boolean;
   overlayOpacity: number;
   gridEnabled: boolean;
   gridOpacity: number;
@@ -23,10 +24,31 @@ type DeviceOrientationEventConstructorWithPermission = typeof DeviceOrientationE
   requestPermission?: (absolute?: boolean) => Promise<DeviceOrientationPermissionState>;
 };
 
-const currentSettingsVersion = 2;
+type WindowWithOrientation = Window & {
+  orientation?: number;
+};
+
+type CompassDirection = {
+  english: string;
+  russian: string;
+};
+
+const currentSettingsVersion = 3;
+
+const compassDirections: CompassDirection[] = [
+  { english: "N", russian: "С" },
+  { english: "NE", russian: "СВ" },
+  { english: "E", russian: "В" },
+  { english: "SE", russian: "ЮВ" },
+  { english: "S", russian: "Ю" },
+  { english: "SW", russian: "ЮЗ" },
+  { english: "W", russian: "З" },
+  { english: "NW", russian: "СЗ" }
+];
 
 const defaultSettings: Settings = {
   settingsVersion: currentSettingsVersion,
+  satelliteImageEnabled: false,
   overlayOpacity: 1,
   gridEnabled: true,
   gridOpacity: 0.35,
@@ -52,7 +74,11 @@ export async function createApp(root: HTMLDivElement | null): Promise<void> {
       </div>
       <section id="settings-sheet" class="settings-sheet" aria-label="Settings" hidden>
         <div class="sheet-handle" aria-hidden="true"></div>
-        <label>
+        <label class="toggle-row">
+          <span>Satellite image</span>
+          <input id="satellite-image-enabled" type="checkbox" />
+        </label>
+        <label id="overlay-opacity-row">
           Overlay opacity
           <input id="overlay-opacity" type="range" min="0" max="1" step="0.01" value="1" />
         </label>
@@ -93,6 +119,8 @@ export async function createApp(root: HTMLDivElement | null): Promise<void> {
   const gpsStatus = requireElement<HTMLOutputElement>(root, "#gps-status");
   const compassStatus = requireElement<HTMLOutputElement>(root, "#compass-status");
   const compassEnable = requireElement<HTMLButtonElement>(root, "#compass-enable");
+  const satelliteImageEnabled = requireElement<HTMLInputElement>(root, "#satellite-image-enabled");
+  const overlayOpacityRow = requireElement<HTMLLabelElement>(root, "#overlay-opacity-row");
   const opacity = requireElement<HTMLInputElement>(root, "#overlay-opacity");
   const gridEnabled = requireElement<HTMLInputElement>(root, "#grid-enabled");
   const gridOpacity = requireElement<HTMLInputElement>(root, "#grid-opacity");
@@ -100,12 +128,19 @@ export async function createApp(root: HTMLDivElement | null): Promise<void> {
   const redFilterStrength = requireElement<HTMLInputElement>(root, "#red-filter-strength");
 
   const syncSettings = () => {
+    if (!settings.satelliteImageEnabled) {
+      settings.overlayOpacity = 1;
+    }
+
+    satelliteImageEnabled.checked = settings.satelliteImageEnabled;
+    overlayOpacityRow.hidden = !settings.satelliteImageEnabled;
     opacity.value = String(settings.overlayOpacity);
     gridEnabled.checked = settings.gridEnabled;
     gridOpacity.value = String(settings.gridOpacity);
     redFilterEnabled.checked = settings.redFilterEnabled;
     redFilterStrength.value = String(settings.redFilterStrength);
-    mapState.setOverlayOpacity(settings.overlayOpacity);
+    mapState.setSatelliteImageEnabled(settings.satelliteImageEnabled);
+    mapState.setOverlayOpacity(settings.satelliteImageEnabled ? settings.overlayOpacity : 1);
     mapState.setGridEnabled(settings.gridEnabled);
     mapState.setGridOpacity(settings.gridOpacity);
     root.style.setProperty("--red-filter-strength", String(settings.redFilterStrength));
@@ -117,6 +152,11 @@ export async function createApp(root: HTMLDivElement | null): Promise<void> {
     const nextOpen = settingsSheet.hidden;
     settingsSheet.hidden = !nextOpen;
     settingsButton.setAttribute("aria-expanded", String(nextOpen));
+  });
+
+  satelliteImageEnabled.addEventListener("change", () => {
+    settings.satelliteImageEnabled = satelliteImageEnabled.checked;
+    syncSettings();
   });
 
   opacity.addEventListener("input", () => {
@@ -202,11 +242,24 @@ function startCompass(
 
   let listening = false;
   let headingSeen = false;
+  let rawCompassHeading: CompassHeading | null = null;
   let unavailableTimer: number | undefined;
 
+  const applyHeading = () => {
+    if (!rawCompassHeading) {
+      return;
+    }
+
+    const heading = {
+      degrees: normalizeDegrees(rawCompassHeading.degrees - getScreenOrientationAngle())
+    };
+    mapState.setCompassHeading(heading);
+    compassStatus.value = formatCompassHeading(heading.degrees);
+  };
+
   const handleOrientation = (event: Event) => {
-    const heading = getCompassHeading(event);
-    if (!heading) {
+    rawCompassHeading = getCompassHeading(event);
+    if (!rawCompassHeading) {
       return;
     }
 
@@ -216,8 +269,7 @@ function startCompass(
       unavailableTimer = undefined;
     }
 
-    mapState.setCompassHeading(heading);
-    compassStatus.value = `Heading ${Math.round(heading.degrees)}\u00b0`;
+    applyHeading();
   };
 
   const registerListeners = () => {
@@ -228,6 +280,8 @@ function startCompass(
     listening = true;
     window.addEventListener("deviceorientationabsolute", handleOrientation);
     window.addEventListener("deviceorientation", handleOrientation);
+    screen.orientation?.addEventListener("change", applyHeading);
+    window.addEventListener("orientationchange", applyHeading);
     unavailableTimer = window.setTimeout(() => {
       if (!headingSeen) {
         mapState.setCompassHeading(null);
@@ -289,6 +343,30 @@ function getCompassHeading(event: Event): CompassHeading | null {
   return null;
 }
 
+function formatCompassHeading(degrees: number): string {
+  const direction = getCompassDirection(degrees);
+  return `Heading ${Math.round(degrees)}\u00b0 ${direction.english} (${direction.russian})`;
+}
+
+function getCompassDirection(degrees: number): CompassDirection {
+  const index = Math.round(normalizeDegrees(degrees) / 45) % compassDirections.length;
+  return compassDirections[index];
+}
+
+function getScreenOrientationAngle(): number {
+  const orientationAngle = screen.orientation?.angle;
+  if (typeof orientationAngle === "number" && Number.isFinite(orientationAngle)) {
+    return orientationAngle;
+  }
+
+  const legacyOrientation = (window as WindowWithOrientation).orientation;
+  if (typeof legacyOrientation === "number" && Number.isFinite(legacyOrientation)) {
+    return legacyOrientation;
+  }
+
+  return 0;
+}
+
 function loadSettings(): Settings {
   const raw = localStorage.getItem(settingsKey);
   if (!raw) {
@@ -300,7 +378,12 @@ function loadSettings(): Settings {
     const isCurrentSettings = parsed.settingsVersion === currentSettingsVersion;
     return {
       settingsVersion: currentSettingsVersion,
-      overlayOpacity: clamp(parsed.overlayOpacity ?? defaultSettings.overlayOpacity, 0, 1),
+      satelliteImageEnabled: isCurrentSettings
+        ? (parsed.satelliteImageEnabled ?? defaultSettings.satelliteImageEnabled)
+        : false,
+      overlayOpacity: isCurrentSettings
+        ? clamp(parsed.overlayOpacity ?? defaultSettings.overlayOpacity, 0, 1)
+        : 1,
       gridEnabled: isCurrentSettings ? (parsed.gridEnabled ?? defaultSettings.gridEnabled) : true,
       gridOpacity: clamp(parsed.gridOpacity ?? defaultSettings.gridOpacity, 0, 1),
       redFilterEnabled: parsed.redFilterEnabled ?? defaultSettings.redFilterEnabled,

@@ -38,6 +38,7 @@ export type CompassHeading = {
 type MapState = {
   setGpsPosition(position: GpsPosition): void;
   setCompassHeading(heading: CompassHeading | null): void;
+  setSatelliteImageEnabled(enabled: boolean): void;
   setOverlayOpacity(opacity: number): void;
   setGridEnabled(enabled: boolean): void;
   setGridOpacity(opacity: number): void;
@@ -65,10 +66,7 @@ export function createMap(elementId: string, pack: MapPack): MapState {
   const mapPackBaseUrl = `${import.meta.env.BASE_URL}map-packs/${pack.id}/`;
   const baseUrl = `${mapPackBaseUrl}${pack.baseImage}`;
 
-  L.imageOverlay(baseUrl, imageBounds, {
-    interactive: false,
-    className: "base-image"
-  }).addTo(map);
+  let baseOverlay: L.ImageOverlay | null = null;
 
   const overlay = pack.overlayImage
     ? L.imageOverlay(`${mapPackBaseUrl}${pack.overlayImage}`, imageBounds, {
@@ -149,6 +147,28 @@ export function createMap(elementId: string, pack: MapPack): MapState {
     setCompassHeading(heading) {
       compassHeading = heading ? { degrees: normalizeDegrees(heading.degrees) } : null;
       applyCompassHeading(positionMarker, compassHeading);
+    },
+    setSatelliteImageEnabled(enabled) {
+      if (enabled) {
+        if (!baseOverlay) {
+          baseOverlay = L.imageOverlay(baseUrl, imageBounds, {
+            interactive: false,
+            className: "base-image"
+          });
+        }
+
+        if (!map.hasLayer(baseOverlay)) {
+          baseOverlay.addTo(map);
+          baseOverlay.bringToBack();
+        }
+
+        return;
+      }
+
+      if (baseOverlay) {
+        baseOverlay.removeFrom(map);
+        baseOverlay = null;
+      }
     },
     setOverlayOpacity(opacity) {
       overlay?.setOpacity(clamp(opacity, 0, 1));
