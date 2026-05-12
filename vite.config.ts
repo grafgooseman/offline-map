@@ -116,8 +116,8 @@ export default defineConfig({
       manifest: {
         name: "UNF - RuFor map",
         short_name: "RuFor map",
-        start_url: ".",
-        scope: ".",
+        start_url: basePath,
+        scope: basePath,
         display: "standalone",
         background_color: "#101418",
         theme_color: "#101418",
