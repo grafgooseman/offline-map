@@ -1,0 +1,28 @@
+{
+  "id": "current",
+  "name": "SCOOP 2023 square 3 bottom-left",
+  "mode": "image-pixel",
+  "baseImage": "base.webp",
+  "width": 5000,
+  "height": 5000,
+  "pixelSizeMeters": 0.2,
+  "projection": "NAD83(CSRS) / UTM zone 17N",
+  "gpsBounds": {
+    "north": 44.80412938394171,
+    "south": 44.79540021202456,
+    "east": -78.59747779093524,
+    "west": -78.61048311439704
+  },
+  "tiles": [
+    {
+      "file": "1km17689049630SCOOP2023.tif",
+      "westEastingMeters": 689000,
+      "southNorthingMeters": 4963000
+    }
+  ],
+  "activeSquare": {
+    "label": "square-3-bottom-left",
+    "file": "1km17689049630SCOOP2023.tif"
+  },
+  "overlayImage": "aligned-overlay.webp"
+}

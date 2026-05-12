@@ -1,0 +1,25 @@
+{
+  "name": "offline-airsoft-mapper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "alignment:dev": "vite --host 127.0.0.1",
+    "prepare:map": "node scripts/prepare-map-pack.mjs",
+    "bake:overlay": "node scripts/bake-overlay.mjs",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "vite-plugin-pwa": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.21",
+    "sharp": "^0.34.5",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.7"
+  }
+}

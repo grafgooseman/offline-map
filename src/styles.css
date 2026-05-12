@@ -1,0 +1,269 @@
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  color: #f7f7f7;
+  background: #050607;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  touch-action: none;
+  user-select: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  position: relative;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background: #050607;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #050607;
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #050607;
+  touch-action: none;
+}
+
+.leaflet-control-container {
+  display: none;
+}
+
+.base-image {
+  image-rendering: auto;
+}
+
+.baked-overlay {
+  image-rendering: auto;
+}
+
+.gps-accuracy {
+  pointer-events: none;
+}
+
+.gps-position-icon {
+  border: 0;
+  background: transparent;
+}
+
+.gps-position {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.65));
+  pointer-events: none;
+}
+
+.gps-position__heading {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: rotate(var(--gps-heading, 0deg));
+  transform-origin: center;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.gps-position--has-heading .gps-position__heading {
+  opacity: 1;
+}
+
+.gps-position__heading::before {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-right: 7px solid transparent;
+  border-bottom: 20px solid #ff4545;
+  border-left: 7px solid transparent;
+  content: "";
+  filter:
+    drop-shadow(0 0 1px #fff)
+    drop-shadow(0 2px 4px rgb(0 0 0 / 0.75));
+  transform: translateX(-50%);
+}
+
+.gps-position__dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: #1f8fff;
+  transform: translate(-50%, -50%);
+}
+
+.settings-button {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 12px);
+  left: calc(env(safe-area-inset-left) + 12px);
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  border-radius: 999px;
+  color: #f8f8f8;
+  background: rgb(9 12 14 / 0.78);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(10px);
+}
+
+.settings-button span {
+  display: block;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.tracking-status {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 18px);
+  left: 72px;
+  right: calc(env(safe-area-inset-right) + 12px);
+  z-index: 900;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.gps-status,
+.compass-status {
+  min-height: 28px;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.35;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.75);
+}
+
+.gps-status {
+  pointer-events: none;
+}
+
+.gps-status:empty,
+.compass-status:empty {
+  display: none;
+}
+
+.compass-status {
+  padding: 4px 9px;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 999px;
+  background: rgb(9 12 14 / 0.64);
+  backdrop-filter: blur(8px);
+}
+
+.compass-enable {
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgb(9 12 14 / 0.78);
+  pointer-events: auto;
+}
+
+.settings-sheet {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 1000;
+  display: grid;
+  gap: 16px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 16px 18px;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 18px;
+  color: #f8f8f8;
+  background: rgb(9 12 14 / 0.86);
+  box-shadow: 0 16px 46px rgb(0 0 0 / 0.48);
+  backdrop-filter: blur(14px);
+}
+
+.settings-sheet[hidden] {
+  display: none;
+}
+
+.sheet-handle {
+  justify-self: center;
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.35);
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: #ff4545;
+}
+
+.toggle-row {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  accent-color: #ff4545;
+}
+
+.red-filter {
+  position: absolute;
+  inset: 0;
+  z-index: 1100;
+  pointer-events: none;
+  opacity: 0;
+  background: rgb(255 0 0);
+  mix-blend-mode: multiply;
+  transition: opacity 120ms ease;
+}
+
+.night-filter-enabled .red-filter {
+  opacity: var(--red-filter-strength, 0.45);
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .settings-sheet {
+    left: auto;
+    width: min(380px, calc(100vw - 24px));
+  }
+}

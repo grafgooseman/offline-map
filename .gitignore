@@ -1,0 +1,7 @@
+node_modules/
+dist/
+preview*.log
+vite-dev*.log
+preview-smoke.png
+COOP2021_Sample_Uncompressed.tif
+source-imagery/
