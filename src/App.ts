@@ -364,7 +364,7 @@ function getCompassHeading(event: Event): CompassHeading | null {
 
 function formatCompassHeading(degrees: number): string {
   const direction = getCompassDirection(degrees);
-  return `Heading ${Math.round(degrees)}\u00b0 ${direction.english} (${direction.russian})`;
+  return `${Math.round(degrees)}\u00b0 ${direction.english} (${direction.russian})`;
 }
 
 function getCompassDirection(degrees: number): CompassDirection {
