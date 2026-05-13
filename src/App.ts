@@ -33,7 +33,7 @@ type CompassDirection = {
   russian: string;
 };
 
-const currentSettingsVersion = 3;
+const currentSettingsVersion = 4;
 
 const compassDirections: CompassDirection[] = [
   { english: "N", russian: "С" },
@@ -51,7 +51,7 @@ const defaultSettings: Settings = {
   satelliteImageEnabled: false,
   overlayOpacity: 1,
   gridEnabled: true,
-  gridOpacity: 0.35,
+  gridOpacity: 1,
   redFilterEnabled: false,
   redFilterStrength: 0.8
 };
@@ -83,12 +83,12 @@ export async function createApp(root: HTMLDivElement | null): Promise<void> {
           <input id="overlay-opacity" type="range" min="0" max="1" step="0.01" value="1" />
         </label>
         <label class="toggle-row">
-          <span>10 m grid</span>
+          <span>25 m grid</span>
           <input id="grid-enabled" type="checkbox" />
         </label>
         <label>
           Grid opacity
-          <input id="grid-opacity" type="range" min="0" max="1" step="0.01" value="0.35" />
+          <input id="grid-opacity" type="range" min="0" max="1" step="0.01" value="1" />
         </label>
         <label class="toggle-row">
           <span>Red night filter</span>
@@ -148,11 +148,30 @@ export async function createApp(root: HTMLDivElement | null): Promise<void> {
     saveSettings(settings);
   };
 
+  const setSettingsOpen = (open: boolean) => {
+    settingsSheet.hidden = !open;
+    settingsButton.setAttribute("aria-expanded", String(open));
+  };
+
   settingsButton.addEventListener("click", () => {
-    const nextOpen = settingsSheet.hidden;
-    settingsSheet.hidden = !nextOpen;
-    settingsButton.setAttribute("aria-expanded", String(nextOpen));
+    setSettingsOpen(settingsSheet.hidden);
   });
+
+  root.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (settingsSheet.hidden || !(event.target instanceof Node)) {
+        return;
+      }
+
+      if (settingsSheet.contains(event.target) || settingsButton.contains(event.target)) {
+        return;
+      }
+
+      setSettingsOpen(false);
+    },
+    { capture: true }
+  );
 
   satelliteImageEnabled.addEventListener("change", () => {
     settings.satelliteImageEnabled = satelliteImageEnabled.checked;
@@ -251,7 +270,7 @@ function startCompass(
     }
 
     const heading = {
-      degrees: normalizeDegrees(rawCompassHeading.degrees - getScreenOrientationAngle())
+      degrees: normalizeDegrees(rawCompassHeading.degrees + getScreenOrientationAngle())
     };
     mapState.setCompassHeading(heading);
     compassStatus.value = formatCompassHeading(heading.degrees);
@@ -385,7 +404,9 @@ function loadSettings(): Settings {
         ? clamp(parsed.overlayOpacity ?? defaultSettings.overlayOpacity, 0, 1)
         : 1,
       gridEnabled: isCurrentSettings ? (parsed.gridEnabled ?? defaultSettings.gridEnabled) : true,
-      gridOpacity: clamp(parsed.gridOpacity ?? defaultSettings.gridOpacity, 0, 1),
+      gridOpacity: isCurrentSettings
+        ? clamp(parsed.gridOpacity ?? defaultSettings.gridOpacity, 0, 1)
+        : defaultSettings.gridOpacity,
       redFilterEnabled: parsed.redFilterEnabled ?? defaultSettings.redFilterEnabled,
       redFilterStrength: clamp(parsed.redFilterStrength ?? defaultSettings.redFilterStrength, 0, 1)
     };

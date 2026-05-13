@@ -24,5 +24,47 @@
     "label": "square-3-bottom-left",
     "file": "1km17689049630SCOOP2023.tif"
   },
-  "overlayImage": "aligned-overlay.webp"
+  "overlayImage": "aligned-overlay.webp",
+  "navigationGrid": {
+    "startColumn": 22,
+    "startRow": 12,
+    "columns": [
+      "Papa",
+      "Oscar",
+      "November",
+      "Mike",
+      "Lima",
+      "Kilo",
+      "Juliet",
+      "India",
+      "Hotel",
+      "Golf",
+      "Foxtrot",
+      "Echo",
+      "Delta",
+      "Charlie",
+      "Beta",
+      "Alfa"
+    ],
+    "rows": [
+      "18",
+      "17",
+      "16",
+      "15",
+      "14",
+      "13",
+      "12",
+      "11",
+      "10",
+      "9",
+      "8",
+      "7",
+      "6",
+      "5",
+      "4",
+      "3",
+      "2",
+      "1"
+    ]
+  }
 }
