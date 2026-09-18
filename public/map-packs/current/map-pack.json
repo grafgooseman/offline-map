@@ -8,10 +8,10 @@
   "pixelSizeMeters": 0.2,
   "projection": "NAD83(CSRS) / UTM zone 17N",
   "gpsBounds": {
-    "north": 44.80412938394171,
-    "south": 44.79540021202456,
-    "east": -78.59747779093524,
-    "west": -78.61048311439704
+    "north": 44.80439461532957,
+    "south": 44.79513506674198,
+    "east": -78.59747779177115,
+    "west": -78.61048311519978
   },
   "tiles": [
     {
@@ -66,5 +66,10 @@
       "2",
       "1"
     ]
+  },
+  "georeference": {
+    "projection": "+proj=utm +zone=17 +ellps=GRS80 +units=m +no_defs",
+    "westEastingMeters": 689000,
+    "southNorthingMeters": 4963000
   }
 }

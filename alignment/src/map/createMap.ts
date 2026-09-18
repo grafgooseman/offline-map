@@ -1,35 +1,9 @@
 import L from "leaflet";
 import type { OverlayAlignment } from "./overlayAlignment";
 
-export type GpsBounds = {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-};
-
-export type MapPack = {
-  id: string;
-  name: string;
-  mode: "image-pixel";
-  baseImage: string;
-  width: number;
-  height: number;
-  pixelSizeMeters: number;
-  projection: string;
-  gpsBounds: GpsBounds | null;
-  tiles?: Array<{
-    file: string;
-    westEastingMeters: number;
-    southNorthingMeters: number;
-  }>;
-};
-
-export type GpsPosition = {
-  latitude: number;
-  longitude: number;
-  accuracyMeters: number;
-};
+import { createGpsProjector } from "../../../src/map/gps";
+import type { GpsPosition, MapPack } from "../../../src/map/mapPack";
+export type { MapPack } from "../../../src/map/mapPack";
 
 type AlignmentChanged = (alignment: OverlayAlignment) => void;
 
@@ -45,6 +19,7 @@ export function createMap(
   initialAlignment: OverlayAlignment,
   onAlignmentChanged: AlignmentChanged
 ): MapState {
+  const projectGps = pack.georeference ? createGpsProjector(pack) : null;
   const map = L.map(elementId, {
     crs: L.CRS.Simple,
     minZoom: -4,
@@ -93,11 +68,11 @@ export function createMap(
       overlay.setImage(url, alt);
     },
     setGpsPosition(position) {
-      if (!pack.gpsBounds) {
+      if (!projectGps) {
         return;
       }
 
-      const point = gpsToImagePoint(position, pack);
+      const { point } = projectGps(position);
       accuracyCircle.setLatLng(point);
       accuracyCircle.setRadius(position.accuracyMeters / pack.pixelSizeMeters);
       positionMarker.setLatLng(point);
@@ -238,16 +213,4 @@ class TransformImageOverlay extends L.Layer {
     this.image.style.transformOrigin = "center";
     this.image.style.transform = `translate3d(${topLeft.x}px, ${topLeft.y}px, 0) rotate(${this.alignment.rotation}deg)`;
   }
-}
-
-function gpsToImagePoint(position: GpsPosition, pack: MapPack): L.LatLngExpression {
-  const bounds = pack.gpsBounds;
-  if (!bounds) {
-    return [0, 0];
-  }
-
-  const x = ((position.longitude - bounds.west) / (bounds.east - bounds.west)) * pack.width;
-  const y = ((bounds.north - position.latitude) / (bounds.north - bounds.south)) * pack.height;
-
-  return [y, x];
 }

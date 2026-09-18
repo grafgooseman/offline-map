@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import proj4 from "proj4";
 
 const root = process.cwd();
 const defaultOntarioDirectory = path.join(root, "source-imagery", "scoop-2023");
@@ -24,6 +25,9 @@ if (!firstMetadata.width || !firstMetadata.height) {
 
 const tileWidth = firstMetadata.width;
 const tileHeight = firstMetadata.height;
+if (tileWidth !== tileHeight) {
+  throw new Error("A 1 km square tile must have square pixels and equal image dimensions.");
+}
 const minEasting = Math.min(...sourceTiles.map((tile) => tile.westEastingMeters));
 const maxEasting = Math.max(...sourceTiles.map((tile) => tile.eastEastingMeters));
 const minNorthing = Math.min(...sourceTiles.map((tile) => tile.southNorthingMeters));
@@ -52,8 +56,11 @@ await sharp({
   .webp({ quality: 88, effort: 4 })
   .toFile(baseImage);
 
-const southwest = utmToWgs84(sourceTiles[0].zone, minEasting, minNorthing);
-const northeast = utmToWgs84(sourceTiles[0].zone, maxEasting, maxNorthing);
+const projection = `+proj=utm +zone=${sourceTiles[0].zone} +ellps=GRS80 +units=m +no_defs`;
+const geographicCorners = [
+  [minEasting, minNorthing], [minEasting, maxNorthing],
+  [maxEasting, minNorthing], [maxEasting, maxNorthing]
+].map((point) => proj4(projection, "EPSG:4326", point));
 
 const mapPack = {
   id: "current",
@@ -62,13 +69,18 @@ const mapPack = {
   baseImage: "base.webp",
   width,
   height,
-  pixelSizeMeters: 0.2,
-  projection: "NAD83(CSRS) / UTM zone 17N",
+  pixelSizeMeters: (maxEasting - minEasting) / width,
+  projection: `NAD83(CSRS) / UTM zone ${sourceTiles[0].zone}N`,
+  georeference: {
+    projection,
+    westEastingMeters: minEasting,
+    southNorthingMeters: minNorthing
+  },
   gpsBounds: {
-    north: northeast.latitude,
-    south: southwest.latitude,
-    east: northeast.longitude,
-    west: southwest.longitude
+    north: Math.max(...geographicCorners.map((point) => point[1])),
+    south: Math.min(...geographicCorners.map((point) => point[1])),
+    east: Math.max(...geographicCorners.map((point) => point[0])),
+    west: Math.min(...geographicCorners.map((point) => point[0]))
   },
   tiles: sourceTiles.map((tile) => ({
     file: path.basename(tile.filePath),
@@ -124,63 +136,4 @@ function parseOntarioTile(filePath) {
     southNorthingMeters,
     northNorthingMeters: southNorthingMeters + 1000
   };
-}
-
-function utmToWgs84(zone, easting, northing) {
-  const a = 6378137;
-  const eccSquared = 0.00669438;
-  const k0 = 0.9996;
-  const eccPrimeSquared = eccSquared / (1 - eccSquared);
-  const e1 = (1 - Math.sqrt(1 - eccSquared)) / (1 + Math.sqrt(1 - eccSquared));
-  const x = easting - 500000;
-  const y = northing;
-  const longOrigin = (zone - 1) * 6 - 180 + 3;
-  const m = y / k0;
-  const mu =
-    m /
-    (a *
-      (1 -
-        eccSquared / 4 -
-        (3 * eccSquared * eccSquared) / 64 -
-        (5 * eccSquared * eccSquared * eccSquared) / 256));
-  const phi1Rad =
-    mu +
-    ((3 * e1) / 2 - (27 * e1 * e1 * e1) / 32) * Math.sin(2 * mu) +
-    ((21 * e1 * e1) / 16 - (55 * e1 * e1 * e1 * e1) / 32) * Math.sin(4 * mu) +
-    ((151 * e1 * e1 * e1) / 96) * Math.sin(6 * mu);
-  const n1 = a / Math.sqrt(1 - eccSquared * Math.sin(phi1Rad) * Math.sin(phi1Rad));
-  const t1 = Math.tan(phi1Rad) * Math.tan(phi1Rad);
-  const c1 = eccPrimeSquared * Math.cos(phi1Rad) * Math.cos(phi1Rad);
-  const r1 =
-    (a * (1 - eccSquared)) /
-    Math.pow(1 - eccSquared * Math.sin(phi1Rad) * Math.sin(phi1Rad), 1.5);
-  const d = x / (n1 * k0);
-  const latitude =
-    phi1Rad -
-    ((n1 * Math.tan(phi1Rad)) / r1) *
-      ((d * d) / 2 -
-        ((5 + 3 * t1 + 10 * c1 - 4 * c1 * c1 - 9 * eccPrimeSquared) * d ** 4) / 24 +
-        ((61 + 90 * t1 + 298 * c1 + 45 * t1 * t1 - 252 * eccPrimeSquared - 3 * c1 * c1) *
-          d ** 6) /
-          720);
-  const longitude =
-    ((d -
-      ((1 + 2 * t1 + c1) * d ** 3) / 6 +
-      ((5 - 2 * c1 + 28 * t1 - 3 * c1 * c1 + 8 * eccPrimeSquared + 24 * t1 * t1) * d ** 5) /
-        120) /
-      Math.cos(phi1Rad)) +
-    degreesToRadians(longOrigin);
-
-  return {
-    latitude: radiansToDegrees(latitude),
-    longitude: radiansToDegrees(longitude)
-  };
-}
-
-function degreesToRadians(value) {
-  return (value * Math.PI) / 180;
-}
-
-function radiansToDegrees(value) {
-  return (value * 180) / Math.PI;
 }

@@ -1,4 +1,5 @@
 import { createMap, type CompassHeading, type MapPack } from "./map/createMap";
+import { createGpsTracker } from "./map/gpsTracking";
 
 const mapPackPath = `${import.meta.env.BASE_URL}map-packs/current/map-pack.json`;
 const settingsKey = "mobile-mapper.settings";
@@ -204,44 +205,80 @@ export async function createApp(root: HTMLDivElement | null): Promise<void> {
   });
 
   syncSettings();
-  startGps(mapState, pack, gpsStatus);
+  void startGps(mapState, pack, gpsStatus);
   startCompass(mapState, compassStatus, compassEnable);
 }
 
-function startGps(
+async function startGps(
   mapState: ReturnType<typeof createMap>,
   pack: MapPack,
   gpsStatus: HTMLOutputElement
-): void {
-  if (!navigator.geolocation) {
+): Promise<void> {
+  if (!pack.georeference) {
+    gpsStatus.value = "Map GPS georeference missing";
+    return;
+  }
+  const debug = import.meta.env.DEV && new URLSearchParams(location.search).get("gpsDebug") === "1"
+    ? (await import("./dev/gpsDebug")).createGpsDebug()
+    : null;
+  const geolocation = debug?.geolocation ?? navigator.geolocation;
+  if (!geolocation) {
     gpsStatus.value = "GPS unavailable";
     return;
   }
-
-  if (!pack.gpsBounds) {
-    gpsStatus.value = "Map GPS bounds missing";
-    return;
-  }
-
-  gpsStatus.value = "Requesting GPS";
-  navigator.geolocation.watchPosition(
-    (position) => {
-      mapState.setGpsPosition({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracyMeters: position.coords.accuracy
-      });
-      gpsStatus.value = "";
-    },
-    (error) => {
-      gpsStatus.value = error.message;
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 1000,
-      timeout: 15000
-    }
-  );
+  const tracker = createGpsTracker({
+    setPosition: (position) => mapState.setGpsPosition(position),
+    setStatus: (message) => { gpsStatus.value = message; },
+    report: debug?.report
+  });
+  gpsStatus.value = debug ? "GPS simulation active" : "Requesting GPS";
+  let watchId: number | undefined;
+  let timer: number | undefined;
+  let generation = 0;
+  const start = () => {
+    if (watchId !== undefined) return;
+    const activeGeneration = ++generation;
+    let lastAcquisition = Date.now();
+    let refreshing = false;
+    const receive = (position: GeolocationPosition) => {
+      if (activeGeneration !== generation) return;
+      lastAcquisition = Date.now();
+      tracker.receive(position);
+    };
+    const fail = (error: GeolocationPositionError) => {
+      if (activeGeneration === generation) tracker.fail(error.message);
+    };
+    const options = { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 };
+    watchId = geolocation.watchPosition(
+      receive,
+      fail,
+      options
+    );
+    timer = window.setInterval(() => {
+      tracker.checkFreshness();
+      // watchPosition may stay quiet when stationary. Request a fresh fix
+      // before expiring it, without polling while the app is in the background.
+      if (!debug && !document.hidden && !refreshing && Date.now() - lastAcquisition >= 15000) {
+        lastAcquisition = Date.now();
+        refreshing = true;
+        navigator.geolocation.getCurrentPosition(
+          (position) => { refreshing = false; receive(position); },
+          (error) => { refreshing = false; fail(error); },
+          options
+        );
+      }
+    }, 1000);
+  };
+  window.addEventListener("pagehide", () => {
+    generation++;
+    if (watchId !== undefined) geolocation.clearWatch(watchId);
+    window.clearInterval(timer);
+    watchId = undefined;
+    mapState.setGpsPosition(null);
+  });
+  window.addEventListener("pageshow", start);
+  document.addEventListener("visibilitychange", () => tracker.checkFreshness());
+  start();
 }
 
 function startCompass(

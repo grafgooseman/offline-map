@@ -1,0 +1,74 @@
+[
+  {
+    "name": "SW corner",
+    "latitude": 44.795400213725024,
+    "longitude": -78.61048311519978,
+    "expected": [
+      0,
+      0
+    ]
+  },
+  {
+    "name": "NW corner",
+    "latitude": 44.80439461532957,
+    "longitude": -78.61011162957553,
+    "expected": [
+      5000,
+      0
+    ]
+  },
+  {
+    "name": "NE corner",
+    "latitude": 44.804129385644536,
+    "longitude": -78.59747779177115,
+    "expected": [
+      5000,
+      5000
+    ]
+  },
+  {
+    "name": "SE corner",
+    "latitude": 44.79513506674198,
+    "longitude": -78.59785123661361,
+    "expected": [
+      0,
+      5000
+    ]
+  },
+  {
+    "name": "Centre",
+    "latitude": 44.799764996962956,
+    "longitude": -78.60398094329003,
+    "expected": [
+      2500,
+      2500
+    ]
+  },
+  {
+    "name": "Overlay centre",
+    "latitude": 44.799844499007385,
+    "longitude": -78.60150671260216,
+    "expected": [
+      2573.02,
+      3477.13
+    ]
+  },
+  {
+    "name": "North test",
+    "latitude": 44.80246330430531,
+    "longitude": -78.6038691958595,
+    "expected": [
+      4000,
+      2500
+    ]
+  },
+  {
+    "name": "South test",
+    "latitude": 44.79706668812056,
+    "longitude": -78.60409267500539,
+    "expected": [
+      1000,
+      2500
+    ]
+  }
+]

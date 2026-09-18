@@ -10,10 +10,12 @@
     "prepare:map": "node scripts/prepare-map-pack.mjs",
     "bake:overlay": "node scripts/bake-overlay.mjs",
     "build": "tsc && vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
+    "proj4": "2.20.9",
     "vite-plugin-pwa": "^1.1.0"
   },
   "devDependencies": {

@@ -1,50 +1,15 @@
 import L from "leaflet";
 
-export type GpsBounds = {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-};
-
-export type MapPack = {
-  id: string;
-  name: string;
-  mode: "image-pixel";
-  baseImage: string;
-  overlayImage?: string;
-  width: number;
-  height: number;
-  pixelSizeMeters: number;
-  projection: string;
-  gpsBounds: GpsBounds | null;
-  tiles?: Array<{
-    file: string;
-    westEastingMeters: number;
-    southNorthingMeters: number;
-  }>;
-  navigationGrid?: NavigationGrid;
-};
-
-export type NavigationGrid = {
-  startColumn: number;
-  startRow: number;
-  columns: string[];
-  rows: string[];
-};
-
-export type GpsPosition = {
-  latitude: number;
-  longitude: number;
-  accuracyMeters: number;
-};
+import { createGpsProjector } from "./gps";
+import type { GpsMapPosition, GpsPosition, MapPack } from "./mapPack";
+export type { MapPack } from "./mapPack";
 
 export type CompassHeading = {
   degrees: number;
 };
 
 type MapState = {
-  setGpsPosition(position: GpsPosition): void;
+  setGpsPosition(position: GpsPosition | null): GpsMapPosition | null;
   setCompassHeading(heading: CompassHeading | null): void;
   setSatelliteImageEnabled(enabled: boolean): void;
   setOverlayOpacity(opacity: number): void;
@@ -59,6 +24,7 @@ type NavigationGridLabels = {
 const gridSpacingMeters = 25;
 
 export function createMap(elementId: string, pack: MapPack): MapState {
+  const projectGps = pack.georeference ? createGpsProjector(pack) : null;
   const map = L.map(elementId, {
     crs: L.CRS.Simple,
     minZoom: -5,
@@ -139,11 +105,14 @@ export function createMap(elementId: string, pack: MapPack): MapState {
 
   return {
     setGpsPosition(position) {
-      if (!pack.gpsBounds) {
-        return;
+      if (!position || !projectGps) {
+        positionMarker.remove();
+        accuracyCircle.remove();
+        return null;
       }
 
-      const point = gpsToImagePoint(position, pack);
+      const projected = projectGps(position);
+      const point = projected.point;
       accuracyCircle.setLatLng(point);
       accuracyCircle.setRadius(position.accuracyMeters / pack.pixelSizeMeters);
       positionMarker.setLatLng(point);
@@ -157,6 +126,7 @@ export function createMap(elementId: string, pack: MapPack): MapState {
       }
 
       applyCompassHeading(positionMarker, compassHeading);
+      return projected;
     },
     setCompassHeading(heading) {
       compassHeading = heading ? { degrees: normalizeDegrees(heading.degrees) } : null;
@@ -382,18 +352,6 @@ function applyCompassHeading(marker: L.Marker, heading: CompassHeading | null): 
 
   position.classList.add("gps-position--has-heading");
   position.style.setProperty("--gps-heading", `${normalizeDegrees(heading.degrees)}deg`);
-}
-
-function gpsToImagePoint(position: GpsPosition, pack: MapPack): L.LatLngExpression {
-  const bounds = pack.gpsBounds;
-  if (!bounds) {
-    return [0, 0];
-  }
-
-  const x = ((position.longitude - bounds.west) / (bounds.east - bounds.west)) * pack.width;
-  const y = ((bounds.north - position.latitude) / (bounds.north - bounds.south)) * pack.height;
-
-  return [y, x];
 }
 
 function clamp(value: number, min: number, max: number): number {
