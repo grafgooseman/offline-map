@@ -34,7 +34,7 @@ type CompassDirection = {
   russian: string;
 };
 
-const currentSettingsVersion = 4;
+const currentSettingsVersion = 5;
 
 const compassDirections: CompassDirection[] = [
   { english: "N", russian: "С" },
@@ -49,10 +49,10 @@ const compassDirections: CompassDirection[] = [
 
 const defaultSettings: Settings = {
   settingsVersion: currentSettingsVersion,
-  satelliteImageEnabled: false,
+  satelliteImageEnabled: true,
   overlayOpacity: 1,
   gridEnabled: true,
-  gridOpacity: 1,
+  gridOpacity: 0.5,
   redFilterEnabled: false,
   redFilterStrength: 0.8
 };
@@ -89,7 +89,7 @@ export async function createApp(root: HTMLDivElement | null): Promise<void> {
         </label>
         <label>
           Grid opacity
-          <input id="grid-opacity" type="range" min="0" max="1" step="0.01" value="1" />
+          <input id="grid-opacity" type="range" min="0" max="1" step="0.01" value="0.5" />
         </label>
         <label class="toggle-row">
           <span>Red night filter</span>
@@ -431,12 +431,18 @@ function loadSettings(): Settings {
 
   try {
     const parsed = JSON.parse(raw) as Partial<Settings>;
+    // Apply the new defaults once for existing installations, preserving other settings.
+    if (parsed.settingsVersion === 4) {
+      parsed.settingsVersion = currentSettingsVersion;
+      parsed.satelliteImageEnabled = defaultSettings.satelliteImageEnabled;
+      parsed.gridOpacity = defaultSettings.gridOpacity;
+    }
     const isCurrentSettings = parsed.settingsVersion === currentSettingsVersion;
     return {
       settingsVersion: currentSettingsVersion,
       satelliteImageEnabled: isCurrentSettings
         ? (parsed.satelliteImageEnabled ?? defaultSettings.satelliteImageEnabled)
-        : false,
+        : defaultSettings.satelliteImageEnabled,
       overlayOpacity: isCurrentSettings
         ? clamp(parsed.overlayOpacity ?? defaultSettings.overlayOpacity, 0, 1)
         : 1,
